@@ -31,6 +31,10 @@ npx beadmaster
 ## Quick Start
 
 ```bash
+# Initialize in your project (creates .beadmaster/, optionally updates docs)
+beadmaster init              # Basic setup
+beadmaster init --docs       # Also append instructions to AGENTS.md
+
 # Check what's available
 beadmaster status
 
@@ -51,6 +55,31 @@ beadmaster links
 ```
 
 ## Commands
+
+### `beadmaster init`
+
+Initialize Beadmaster in your project. Creates `.beadmaster/` directory and optionally appends usage instructions to your documentation.
+
+```bash
+beadmaster init              # Basic setup
+beadmaster init --docs       # Also append to AGENTS.md
+beadmaster init --claude     # Append to CLAUDE.md instead
+beadmaster init --docs -f    # Force overwrite existing section
+```
+
+**Output:**
+```
+Initializing Beadmaster
+────────────────────────────────────────
+✓ Created .beadmaster/
+✓ Task Master detected
+✓ Beads detected
+✓ Appended Beadmaster docs to AGENTS.md
+
+Next steps:
+  beadmaster sync --dry-run  # Preview sync
+  beadmaster sync            # Execute sync
+```
 
 ### `beadmaster status`
 

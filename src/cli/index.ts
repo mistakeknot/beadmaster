@@ -7,15 +7,39 @@
 
 import { Command } from 'commander';
 import chalk from 'chalk';
+import { existsSync, mkdirSync, readFileSync, appendFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { SyncEngine } from '../core/sync.js';
 import type { SyncResult, TaskLink } from '../core/types.js';
+
+const DOCS_SNIPPET = `
+### Task Sync (Beadmaster)
+
+Use [Beadmaster](https://github.com/mistakeknot/beadmaster) to sync Task Master (planning) with Beads (execution):
+
+\`\`\`bash
+beadmaster status         # Check availability
+beadmaster sync --dry-run # Preview changes
+beadmaster sync           # Execute sync
+\`\`\`
+
+**Auto-linking convention:** Name beads as \`TM-<id>: <title>\` for automatic linking.
+
+**Workflow:**
+1. Use Task Master for AI-powered PRD parsing and task generation
+2. Run \`beadmaster import\` to create beads for all tasks
+3. Work in Beads for execution tracking with dependencies
+4. Run \`beadmaster sync\` periodically to keep systems aligned
+`;
+
+const DOCS_MARKER = '### Task Sync (Beadmaster)';
 
 const program = new Command();
 
 program
   .name('beadmaster')
   .description('Sync Task Master and Beads for AI coding agents')
-  .version('0.1.0');
+  .version('0.2.0');
 
 // Helper to get project root
 function getProjectRoot(): string {
@@ -229,6 +253,81 @@ program
     } else {
       formatLinks(links);
     }
+  });
+
+program
+  .command('init')
+  .description('Initialize Beadmaster in the current project')
+  .option('--docs', 'Append usage instructions to AGENTS.md')
+  .option('--claude', 'Append usage instructions to CLAUDE.md instead')
+  .option('-f, --force', 'Overwrite existing documentation snippet')
+  .action((opts) => {
+    const root = getProjectRoot();
+    const beadmasterDir = join(root, '.beadmaster');
+
+    console.log('\n' + chalk.bold('Initializing Beadmaster'));
+    console.log('─'.repeat(40));
+
+    // Create .beadmaster directory
+    if (!existsSync(beadmasterDir)) {
+      mkdirSync(beadmasterDir, { recursive: true });
+      console.log(chalk.green('✓ Created .beadmaster/'));
+    } else {
+      console.log(chalk.dim('○ .beadmaster/ already exists'));
+    }
+
+    // Check system availability
+    const engine = new SyncEngine(root);
+    const status = engine.getStatus();
+
+    if (status.taskmaster) {
+      console.log(chalk.green('✓ Task Master detected'));
+    } else {
+      console.log(chalk.yellow('○ Task Master not found (optional)'));
+    }
+
+    if (status.beads) {
+      console.log(chalk.green('✓ Beads detected'));
+    } else {
+      console.log(chalk.yellow('○ Beads not found (optional)'));
+    }
+
+    // Handle docs flag
+    if (opts.docs || opts.claude) {
+      const docFile = opts.claude ? 'CLAUDE.md' : 'AGENTS.md';
+      const docPath = join(root, docFile);
+
+      if (!existsSync(docPath)) {
+        console.log(chalk.yellow(`○ ${docFile} not found, skipping docs`));
+      } else {
+        const content = readFileSync(docPath, 'utf-8');
+
+        if (content.includes(DOCS_MARKER) && !opts.force) {
+          console.log(chalk.dim(`○ ${docFile} already contains Beadmaster section`));
+        } else {
+          appendFileSync(docPath, DOCS_SNIPPET);
+          console.log(chalk.green(`✓ Appended Beadmaster docs to ${docFile}`));
+        }
+      }
+    }
+
+    console.log('\n' + chalk.cyan('Next steps:'));
+    if (!status.taskmaster && !status.beads) {
+      console.log('  1. Initialize Task Master: npx task-master init');
+      console.log('  2. Initialize Beads: bd init');
+      console.log('  3. Run: beadmaster sync');
+    } else {
+      console.log('  beadmaster sync --dry-run  # Preview sync');
+      console.log('  beadmaster sync            # Execute sync');
+    }
+
+    if (!opts.docs && !opts.claude) {
+      console.log(
+        '\n' + chalk.dim('Tip: Run with --docs to add instructions to AGENTS.md')
+      );
+    }
+
+    console.log();
   });
 
 program.parse();
